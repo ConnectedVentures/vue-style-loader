@@ -25,9 +25,14 @@ module.exports.pitch = function (remainingRequest) {
     '',
     '// load the styles',
     'var content = require(' + request + ');',
-    // content list format is [id, css, media, sourceMap]
+    '// content list format is [id, css, media, sourceMap]',
     "if(typeof content === 'string') content = [[module.id, content, '']];",
-    'if(content.locals) module.exports = content.locals;'
+    '// move scope of newContent so that setTarget doesn\'t cause removal of style tags',
+    'var newContent = content;',
+    'if(content.locals) module.exports = content.locals;',
+    '// export a function that changes the targetElement of style loader style injection',
+    '// Accepts a single parameter that is the element to append styles to',
+    'exports.setAppendPoint = function(element) { if (update) update(newContent, element); };'
   ]
 
   if (!isServer) {
@@ -40,7 +45,7 @@ module.exports.pitch = function (remainingRequest) {
       ' // When the styles change, update the <style> tags',
       ' if(!content.locals) {',
       '   module.hot.accept(' + request + ', function() {',
-      '     var newContent = require(' + request + ');',
+      '     newContent = require(' + request + ');',
       "     if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];",
       '     update(newContent);',
       '   });',
