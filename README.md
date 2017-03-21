@@ -1,3 +1,19 @@
+# This is a fork of [vue-style-loader](https://github.com/vuejs/vue-style-loader)
+
+It adds a method to the exports of a style import, `setAppendPoint` which can be used at runtime to change where style tags are embedded on the page.
+
+This is particularly useful for iframes, it can be called multiple times if neccessary, but will only use one appendPoint at a time. Should be pretty easy to change that if needed.
+
+## Example Usage
+
+```js
+import styles from 'style/imported/by/css-loader.css'
+
+promiseIframe().then((iframe) => {
+  styles.setAppendPoint(iframe.contentDocument.head)
+})
+```
+
 # vue-style-loader [![Build Status](https://circleci.com/gh/vuejs/vue-style-loader/tree/master.svg?style=shield)](https://circleci.com/gh/vuejs/vue-loader/tree/master) [![npm package](https://img.shields.io/npm/v/vue-style-loader.svg)](https://www.npmjs.com/package/vue-style-loader)
 
 This is a fork based on [style-loader](https://github.com/webpack/style-loader). Similar to `style-loader`, you can chain it after `css-loader` to dynamically inject CSS into the document as style tags. However, since this is included as a dependency and used by default in `vue-loader`, in most cases you don't need to configure this loader yourself.
