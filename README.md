@@ -1,3 +1,18 @@
+# Fork of: vue-style-loader
+
+This is a fork based on [vue-style-loader](https://github.com/vuejs/vue-style-loader). 
+It exposes a function that allows users to target an element to attach the style tags that it generates to.
+
+The main use case for this is for embedding in iframes.
+
+Use anywhere like so:
+
+``` js
+const setAppendPoint = require('!!vue-style-loader?setAppendPoint!');
+
+setAppendPoint(document.querySelector('iframe').contentWindow.document.body)
+```
+
 # vue-style-loader [![Build Status](https://circleci.com/gh/vuejs/vue-style-loader/tree/master.svg?style=shield)](https://circleci.com/gh/vuejs/vue-loader/tree/master) [![npm package](https://img.shields.io/npm/v/vue-style-loader.svg)](https://www.npmjs.com/package/vue-style-loader)
 
 This is a fork based on [style-loader](https://github.com/webpack/style-loader). Similar to `style-loader`, you can chain it after `css-loader` to dynamically inject CSS into the document as style tags. However, since this is included as a dependency and used by default in `vue-loader`, in most cases you don't need to configure this loader yourself.
