@@ -18,47 +18,79 @@ module.exports.pitch = function (remainingRequest) {
   var addStylesServerPath = loaderUtils.stringifyRequest(this, '!' + path.join(__dirname, 'lib/addStylesServer.js'))
 
   var request = loaderUtils.stringifyRequest(this, '!!' + remainingRequest)
-  var id = JSON.stringify(hash(request))
+  var id = JSON.stringify(hash(request + path.relative(__dirname, this.resourcePath || '')))
+  var options = loaderUtils.getOptions(this) || {}
+
+  var params = loaderUtils.getOptions(this)
+  if (params && params.setAppendPoint && !this.resourcePath) {
+    return [
+      '// add the styles to the DOM',
+      'var update = require(' + addStylesClientPath + ')(' + id + ', null, ' + isProduction + ', ' + JSON.stringify(options) + ');',
+      'var setAppendPoint = update.setAppendPoint;',
+      '// style-loader: Adds some css to the DOM by adding a <style> tag',
+      '',
+      '// export a function that changes the targetElement of style loader style injection',
+      '// Accepts a single parameter that is the element to append styles to',
+      'module.exports = function(element) { if (setAppendPoint) setAppendPoint(element); };'
+    ].join('\n')
+  }
+
+  // direct css import from js --> direct, or manually call `styles.__inject__(ssrContext)` with `manualInject` option
+  // css import from vue file --> component lifecycle linked
+  // style embedded in vue file --> component lifecycle linked
+  var isVue = /"vue":true/.test(remainingRequest) || options.manualInject
 
   var shared = [
     '// style-loader: Adds some css to the DOM by adding a <style> tag',
     '',
     '// load the styles',
     'var content = require(' + request + ');',
-    '// content list format is [id, css, media, sourceMap]',
+    // content list format is [id, css, media, sourceMap]
     "if(typeof content === 'string') content = [[module.id, content, '']];",
-    '// move scope of newContent so that setTarget doesn\'t cause removal of style tags',
-    'var newContent = content;',
-    'if(content.locals) module.exports = content.locals;',
-    '// export a function that changes the targetElement of style loader style injection',
-    '// Accepts a single parameter that is the element to append styles to',
-    'exports.setAppendPoint = function(element) { if (update) update(newContent, element); };'
+    'if(content.locals) module.exports = content.locals;'
   ]
 
   if (!isServer) {
     // on the client: dynamic inject + hot-reload
-    return shared.concat([
+    var code = [
       '// add the styles to the DOM',
-      'var update = require(' + addStylesClientPath + ')(' + id + ', content, ' + isProduction + ');',
-      '// Hot Module Replacement',
-      'if(module.hot) {',
-      ' // When the styles change, update the <style> tags',
-      ' if(!content.locals) {',
-      '   module.hot.accept(' + request + ', function() {',
-      '     newContent = require(' + request + ');',
-      "     if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];",
-      '     update(newContent);',
-      '   });',
-      ' }',
-      ' // When the module is disposed, remove the <style> tags',
-      ' module.hot.dispose(function() { update(); });',
-      '}'
-    ]).join('\n')
+      'var update = require(' + addStylesClientPath + ')(' + id + ', content, ' + isProduction + ', ' + JSON.stringify(options) + ');'
+    ]
+    if (!isProduction) {
+      code = code.concat([
+        '// Hot Module Replacement',
+        'if(module.hot) {',
+        ' // When the styles change, update the <style> tags',
+        ' if(!content.locals) {',
+        '   module.hot.accept(' + request + ', function() {',
+        '     var newContent = require(' + request + ');',
+        "     if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];",
+        '     update(newContent);',
+        '   });',
+        ' }',
+        ' // When the module is disposed, remove the <style> tags',
+        ' module.hot.dispose(function() { update(); });',
+        '}'
+      ])
+    }
+    return shared.concat(code).join('\n')
   } else {
     // on the server: attach to Vue SSR context
-    return shared.concat([
-      '// add CSS to SSR context',
-      'require(' + addStylesServerPath + ')(' + id + ', content, ' + isProduction + ');'
-    ]).join('\n')
+    if (isVue) {
+      // inside *.vue file: expose a function so it can be called in
+      // component's lifecycle hooks
+      return shared.concat([
+        '// add CSS to SSR context',
+        'var add = require(' + addStylesServerPath + ')',
+        'module.exports.__inject__ = function (context) {',
+        '  add(' + id + ', content, ' + isProduction + ', context)',
+        '};'
+      ]).join('\n')
+    } else {
+      // normal import
+      return shared.concat([
+        'require(' + addStylesServerPath + ')(' + id + ', content, ' + isProduction + ')'
+      ]).join('\n')
+    }
   }
 }
