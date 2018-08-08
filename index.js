@@ -25,7 +25,8 @@ module.exports.pitch = function (remainingRequest) {
   if (params && params.setAppendPoint && !this.resourcePath) {
     return [
       '// add the styles to the DOM',
-      'var update = require(' + addStylesClientPath + ')(' + id + ', null, ' + isProduction + ', ' + JSON.stringify(options) + ');',
+      'var add = require(' + addStylesClientPath + ').default',
+      'var update = add(' + id + ', null, ' + isProduction + ', ' + JSON.stringify(options) + ');',
       'var setAppendPoint = update.setAppendPoint;',
       '// style-loader: Adds some css to the DOM by adding a <style> tag',
       '',
